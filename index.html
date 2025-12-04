@@ -1,0 +1,1297 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCC5 - Hướng dẫn hồ sơ (Ver 3.9)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM (Global UMD) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel (Compiler) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Libraries for Export -->
+    <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
+    <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "vite-plugin-singlefile": "https://aistudiocdn.com/vite-plugin-singlefile@^2.3.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+    <div id="root" class="flex items-center justify-center min-h-screen text-slate-500">Đang tải ứng dụng...</div>
+
+    <script type="text/babel">
+        // --- 1. SETUP & UTILS ---
+        const { useState, useEffect } = React;
+        const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } = docx;
+
+        // Icons (SVG)
+        const Icons = {
+            ScrollText: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/></svg>,
+            User: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+            Home: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+            ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>,
+            ArrowLeft: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>,
+            CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+            AlertTriangle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+            Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        };
+
+        // Date Helpers
+        const addYears = (dateStr, years) => {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            date.setFullYear(date.getFullYear() + years);
+            return date.toISOString().split('T')[0];
+        };
+        const isBefore = (d1, d2) => {
+            if (!d1 || !d2) return false;
+            return new Date(d1) < new Date(d2);
+        };
+        const isBeforeOrEqual = (d1, d2) => {
+            if (!d1 || !d2) return false;
+            return new Date(d1) <= new Date(d2);
+        };
+        const getAgeExact = (birthDate, today) => {
+            if (!birthDate || !today) return "0";
+            const birth = new Date(birthDate).getTime();
+            const now = new Date(today).getTime();
+            const diff = (now - birth) / (1000 * 60 * 60 * 24 * 365.25);
+            return diff.toFixed(2);
+        }
+        const formatDate = (isoString) => {
+            if (!isoString) return '';
+            const [y, m, d] = isoString.split('-');
+            return `${d}/${m}/${y}`;
+        };
+        const getGenderLabel = (g) => {
+            if (g === 'ong') return 'ông';
+            if (g === 'ba') return 'bà';
+            return 'ông/bà';
+        };
+
+        // --- 2. INITIAL STATE ---
+        const initialOwner = {
+            id: 0,
+            name: '',
+            gender: 'ong',
+            birthDate: '',
+        };
+        const initialFormData = {
+            guidanceDate: new Date().toISOString().split('T')[0],
+            transactionType: 'mua_ban_khac',
+            hasCertificate: 'co',
+            numberOfOwners: 1,
+            owners: [{ ...initialOwner, id: 1 }],
+            propertyOrigin: 'nhan_chuyen_nhuong',
+            propertyOwnershipDate: '',
+            isMortgaged: 'khong_the_chap',
+            isSecured: 'khong',
+            hasFinancialDebt: 'khong',
+        };
+
+        // --- 3. BUSINESS LOGIC (Generate Guidance) ---
+        const generateGuidance = (data) => {
+            const results = [];
+            const today = data.guidanceDate;
+            const ngay_SH = data.propertyOwnershipDate;
+
+            data.owners.forEach((owner) => {
+                const age = getAgeExact(owner.birthDate, today);
+                const birthDate = owner.birthDate;
+                const sex_CSH = getGenderLabel(owner.gender);
+                let ownerHasOutput = false;
+
+                const isUnder18 = isBefore(today, addYears(birthDate, 18));
+
+                // CASE: DƯỚI 18 TUỔI - CẤM TẶNG CHO
+                if (isUnder18 && data.transactionType === 'tang_cho') {
+                     results.push(`[DƯỚI 18 TUỔI- CHO TÀI SẢN] Trẻ ${owner.name}:
+                • Tính chất: TÀI SẢN RIÊNG.
+                • KHÔNG THỂ TẶNG CHO TÀI SẢN CỦA CON DƯỚI 18 TUỔI`);
+                    ownerHasOutput = true;
+                    return; 
+                }
+
+                // NHÓM 1: DƯỚI 9 TUỔI
+                if (isBefore(today, addYears(birthDate, 9))) {
+                    results.push(`[DƯỚI 9 TUỔI] Trẻ ${owner.name}:
+                    • Tính chất: TÀI SẢN RIÊNG.
+                    •  Người ký văn bản: Cha & Mẹ của trẻ ${owner.name},
+                    → Hồ sơ xuất trình bản chính:
+                            - CCCD của Cha & Mẹ trẻ ${owner.name};
+                            - Giấy Khai sinh trẻ ${owner.name};
+                            - GCN QSDĐ/QSH.`);
+                    ownerHasOutput = true;
+                    return;
+                }
+
+                // NHÓM 2: 9 -> DƯỚI 15
+                if (isBeforeOrEqual(addYears(birthDate, 9), today) && isBefore(today, addYears(birthDate, 15))) {
+                    results.push(`[${age} tuổi] Trẻ ${owner.name}:
+                    • Tính chất: TÀI SẢN RIÊNG.
+                    •  Người ký văn bản: Cha & Mẹ của trẻ ${owner.name},
+                    → Phải xuất trình bản chính:
+                            - CCCD của Cha & Mẹ trẻ ${owner.name};
+                            - Giấy Khai sinh trẻ ${owner.name};
+                            - Văn bản đồng ý của trẻ ${owner.name} (chứng nội dung)
+                              HOẶC CCCD của trẻ ${owner.name} (ký chung);
+                            - GCN QSDĐ/QSH.`);
+                    ownerHasOutput = true;
+                    return;
+                }
+
+                // NHÓM 3: 15 -> DƯỚI 18
+                if (isBeforeOrEqual(addYears(birthDate, 15), today) && isBefore(today, addYears(birthDate, 18))) {
+                    results.push(`[${age} tuổi] Trẻ ${owner.name}:
+                    • Tính chất: TÀI SẢN RIÊNG.
+                    •  Người ký văn bản: trẻ ${owner.name},
+                    → Phải xuất trình bản chính:
+                            - CCCD của trẻ ${owner.name};
+                            - Giấy Khai sinh trẻ ${owner.name};
+                            - CCCD của Cha & Mẹ (ký chung)
+                              HOẶC Văn bản đồng ý của Cha Mẹ (chứng nội dung);
+                            - GCN QSDĐ/QSH.`);
+                    ownerHasOutput = true;
+                    return;
+                }
+
+                // NHÓM 4: TRÊN 18
+                if (isBeforeOrEqual(addYears(birthDate, 18), today)) {
+                    
+                    const isSingleNeverMarried = owner.maritalStatus === 'doc_than' && owner.singleStatusType === 'chua_ket_hon';
+                    const isGiftOrInheritance = data.propertyOrigin === 'tang_cho_thua_ke';
+
+                    // 4.1 — ĐỘC THÂN / TẶNG CHO
+                    if (isSingleNeverMarried || isGiftOrInheritance) {
+                        results.push(`[ĐỘC THÂN//CHƯA_KH//GỐC TẶNG CHO//THỪA KẾ] ${sex_CSH} ${owner.name}:
+                          • Tính chất: TÀI SẢN RIÊNG.
+                          • Người ký văn bản: ${sex_CSH} ${owner.name}.
+                          → Phải xuất trình bản chính:
+                                - CCCD của ${sex_CSH} ${owner.name};
+                                - GCN QSDĐ/QSHN.
+                     Ghi chú:
+                         (1) Trường hợp Tài sản có nguồn gốc thừa kế/nhân tặng cho, CẦN xuất trình:
+                            * Văn bản tặng cho/Văn bản thừa kế
+                         (2) Trường hợp khác, CẦN xuất trình: 
+                            * Giấy xác nhận TTHN phải xác nhận đầy đủ thời gian
+                              từ khi ${sex_CSH} ${owner.name} đủ tuổi kết hôn đến nay (là chưa kết hôn);
+                            * Giấy xác nhận TTHN phải còn hạn 06 tháng
+                              tính đến ngày nộp hồ sơ.`);
+                        ownerHasOutput = true;
+                        return;
+                    }
+
+                    // 4.2 — ĐÃ LY HÔN (Ly hôn < SH)
+                    if (owner.maritalStatus === 'doc_than' && owner.singleStatusType === 'da_ly_hon' && owner.divorceDate) {
+                        if (isBefore(owner.divorceDate, ngay_SH)) {
+                            results.push(`[ĐỘC THÂN//LH→SH] ${sex_CSH} ${owner.name}:
+                          • Tính chất: TÀI SẢN RIÊNG.
+                          • Người ký văn bản: ${sex_CSH} ${owner.name}.
+                          → Phải xuất trình bản chính:
+                                - CCCD của ${sex_CSH} ${owner.name};
+                                - Giấy xác nhận tình trạng hôn nhân của ${sex_CSH} ${owner.name};
+                                - GCN QSDĐ/QSHN.
+                     Ghi chú:
+                         * Giấy xác nhận TTHN phải xác nhận đầy đủ thời gian
+                           từ ngày ly hôn (ngày ${formatDate(owner.divorceDate)}) đến nay (là chưa kết hôn lại);
+                         * Giấy xác nhận TTHN phải còn hạn 06 tháng
+                           tính đến ngày nộp hồ sơ.`);
+                            ownerHasOutput = true;
+                            return;
+                        }
+                    }
+
+                    // 4.3 — VỢ CHỒNG CHẾT (Chết < SH)
+                    if (owner.maritalStatus === 'doc_than' && owner.singleStatusType === 'vo_chong_chet' && owner.spouseDeathDate) {
+                        if (isBefore(owner.spouseDeathDate, ngay_SH)) {
+                            results.push(`[ĐỘC THÂN//DIE→SH] ${sex_CSH} ${owner.name}:
+                          • Tính chất: TÀI SẢN RIÊNG.
+                          • Người ký văn bản: ${sex_CSH} ${owner.name}.
+                          → Phải xuất trình bản chính:
+                                - CCCD của ${sex_CSH} ${owner.name};
+                                - Giấy xác nhận tình trạng hôn nhân của ${sex_CSH} ${owner.name};
+                                - GCN QSDĐ/QSHN.
+                     Ghi chú:
+                         * Giấy xác nhận TTHN phải xác nhận đầy đủ thời gian
+                           từ ngày vợ/chồng cũ chết (ngày ${formatDate(owner.spouseDeathDate)}) đến nay;
+                         * Giấy xác nhận TTHN phải còn hạn 06 tháng
+                           tính đến ngày nộp hồ sơ.`);
+                            ownerHasOutput = true;
+                            return;
+                        }
+                    }
+
+                    // 4.4 — TÀI SẢN CHUNG (SH <= Ly hôn)
+                    if (owner.maritalStatus === 'doc_than' && owner.singleStatusType === 'da_ly_hon' && owner.divorceDate) {
+                        if (isBeforeOrEqual(ngay_SH, owner.divorceDate)) {
+                            const sex_ExDivorce = getGenderLabel(owner.exSpouseGenderDivorce);
+                            results.push(`[ĐỘC THÂN//SH→LH] ${sex_CSH} ${owner.name}:
+                          • Tính chất: TÀI SẢN CHUNG với ${sex_ExDivorce} ${owner.exSpouseNameDivorce}.
+                          • Người ký văn bản: ${sex_CSH} ${owner.name}.
+                          • Người ký cùng: ${sex_ExDivorce} ${owner.exSpouseNameDivorce}.
+                          → Phải xuất trình bản chính:
+                                - CCCD ${sex_CSH} ${owner.name};
+                                - CCCD ${sex_ExDivorce} ${owner.exSpouseNameDivorce};
+                                - Bản án ly hôn;
+                                - GCN QSDĐ/QSHN.
+                     Ghi chú:
+                         Ông/bà vui lòng liên hệ trực tiếp nếu:
+                             (1) Bản án ly hôn ĐÃ CHIA tài sản này
+                                 HOẶC tài sản được tạo lập TRƯỚC thời kỳ hôn nhân;
+                             (2) Bản án ly hôn không ghi rõ thời điểm kết hôn của hôn nhân ban đầu,
+                                 có thể cần bổ sung trích lục kết hôn cũ.`);
+                            ownerHasOutput = true;
+                            return;
+                        }
+                    }
+
+                    // 4.5 — THỪA KẾ (SH <= Chết)
+                    if (owner.maritalStatus === 'doc_than' && owner.singleStatusType === 'vo_chong_chet' && owner.spouseDeathDate) {
+                        if (isBeforeOrEqual(ngay_SH, owner.spouseDeathDate)) {
+                            const sex_ExDeath = getGenderLabel(owner.exSpouseGenderDeath);
+                            results.push(`[ĐỘC THÂN//SH→DIE] ${sex_CSH} ${owner.name}:
+                          • Tính chất: CÓ KHẢ NĂNG LÀ TÀI SẢN CHUNG với ${sex_ExDeath} ${owner.exSpouseNameDeath}.
+                          Do ${sex_ExDeath} ${owner.exSpouseNameDeath} đã chết,
+                          → Phải thực hiện phân chia di sản thừa kế.
+                          → Sau khi phân chia và đăng ký thay đổi chủ sở hữu,
+                            ${sex_CSH} ${owner.name} sẽ ký chung với các thừa kế (nếu có).
+                     Ghi chú:
+                         Ông/bà vui lòng liên hệ trực tiếp để được hướng dẫn chi tiết,
+                         đồng thời xuất trình:
+                             - Giấy chứng nhận kết hôn với ${sex_ExDeath} ${owner.exSpouseNameDeath};
+                             - Giấy chứng tử của ${sex_ExDeath} ${owner.exSpouseNameDeath}.`);
+                            ownerHasOutput = true;
+                            return;
+                        }
+                    }
+
+                    // --- GROUP 5: KẾT HÔN ---
+                    if (owner.maritalStatus === 'co_vo_chong' && owner.marriageDate) {
+                        const ngayKH = owner.marriageDate;
+
+                        if (owner.marriageType === 'lan_dau' && isBefore(ngay_SH, ngayKH)) {
+                            results.push(`[1_KẾT HÔN//SH→KH] ${sex_CSH} ${owner.name}:
+                          • Tính chất: TÀI SẢN RIÊNG.
+                          •  Người ký văn bản: ${sex_CSH} ${owner.name}.
+                          → Phải xuất trình bản chính:
+                                - CCCD của ${sex_CSH} ${owner.name};
+                                - Giấy xác nhận tình trạng hôn nhân của ${sex_CSH} ${owner.name} cho giai đoạn trước khi kết hôn;
+                                - Giấy chứng nhận đăng ký kết hôn;
+                                - GCN QSDĐ/QSHN.
+                     Ghi chú:
+                         * Giấy xác nhận TTHN phải xác nhận đủ thời gian
+                           từ khi ${sex_CSH} ${owner.name} đủ tuổi kết hôn đến ngày kết hôn (ngày ${formatDate(ngayKH)});
+                         * Giấy xác nhận TTHN phải còn hạn sử dụng 06 tháng
+                           tính đến ngày nộp hồ sơ.`);
+                            ownerHasOutput = true;
+                            return;
+                        }
+
+                        if (isBeforeOrEqual(ngayKH, ngay_SH)) {
+                            const sex_Spouse = getGenderLabel(owner.currentSpouseGender);
+                            results.push(`[1&2_KẾT HÔN//KH→SH] ${sex_CSH} ${owner.name}:
+                          • Tính chất: TÀI SẢN CHUNG với ${sex_Spouse} ${owner.currentSpouseName}.
+                          •  Người ký văn bản: ${sex_CSH} ${owner.name}.
+                          •  Người ký cùng: ${sex_Spouse} ${owner.currentSpouseName}.
+                          → Phải xuất trình bản chính:
+                                - CCCD của ${sex_CSH} ${owner.name};
+                                - CCCD của ${sex_Spouse} ${owner.currentSpouseName};
+                                - Giấy chứng nhận đăng ký kết hôn;
+                                - GCN QSDĐ/QSH.`);
+                            ownerHasOutput = true;
+                            return;
+                        }
+
+                        if (owner.marriageType === 'khong_phai_lan_dau' && owner.prevMarriageEndReason === 'ly_hon' && owner.prevDivorceDate) {
+                            const ngayMLH = owner.prevDivorceDate;
+                            if (isBefore(ngayMLH, ngay_SH) && isBefore(ngay_SH, ngayKH)) {
+                                results.push(`[2_KẾT HÔN//LY→SH→KH] ${sex_CSH} ${owner.name}:
+                          • Tính chất: TÀI SẢN RIÊNG.
+                          •  Người ký văn bản: ${sex_CSH} ${owner.name}.
+                          → Phải xuất trình bản chính:
+                                - CCCD của ${sex_CSH} ${owner.name};
+                                - Giấy xác nhận tình trạng hôn nhân của ${sex_CSH} ${owner.name}
+                                  cho giai đoạn từ khi ly hôn (ngày ${formatDate(ngayMLH)}) cho đến ngày kết hôn lại (ngày ${formatDate(ngayKH)});
+                                - Giấy chứng nhận đăng ký kết hôn;
+                                - GCN QSDĐ/QSH.
+                     Ghi chú:
+                         * Giấy xác TTHN phải xác nhận đủ thời gian
+                           cho giai đoạn từ khi ly hôn (ngày ${formatDate(ngayMLH)})
+                           cho đến ngày kết hôn lại (ngày ${formatDate(ngayKH)});
+                         * Giấy xác nhận TTHN phải còn hạn sử dụng 06 tháng
+                           tính đến ngày nộp hồ sơ.`);
+                                ownerHasOutput = true;
+                                return;
+                            }
+                        }
+
+                        if (owner.marriageType === 'khong_phai_lan_dau' && owner.prevMarriageEndReason === 'ly_hon' && owner.prevDivorceDate) {
+                            const ngayMLH = owner.prevDivorceDate;
+                            if (isBeforeOrEqual(ngay_SH, ngayMLH)) {
+                                const sex_PrevSpouse = getGenderLabel(owner.prevSpouseGender);
+                                results.push(`[2_KẾT HÔN//SH→LY→KH] ${sex_CSH} ${owner.name}:
+                          • Tính chất: TÀI SẢN CHUNG với ${sex_PrevSpouse} ${owner.prevSpouseName}.
+                          •  Người ký văn bản: ${sex_CSH} ${owner.name}.
+                          •  Người ký cùng: ${sex_PrevSpouse} ${owner.prevSpouseName}.
+                          → Phải xuất trình bản chính:
+                                - CCCD của ${sex_CSH} ${owner.name};
+                                - CCCD của ${sex_PrevSpouse} ${owner.prevSpouseName};
+                                - Bản án ly hôn;
+                                - GCN QSDĐ/QSH.
+                     Ghi chú:
+                         Ông/bà vui lòng liên hệ trực tiếp để được hướng dẫn cụ thể nếu:
+                             (1) Bản án ly hôn ĐÃ chia tài sản này
+                                 HOẶC tài sản này có TRƯỚC thời kỳ hôn nhân với vợ/chồng cũ;
+                             (2) Bản án ly hôn không ghi cụ thể thời điểm kết hôn
+                                 của hôn nhân ban đầu, có thể cần bổ sung trích lục kết hôn cũ.`);
+                                ownerHasOutput = true;
+                                return;
+                            }
+                        }
+
+                        if (owner.marriageType === 'khong_phai_lan_dau' && owner.prevMarriageEndReason === 'chet' && owner.prevSpouseDeathDate) {
+                            const ngayChet = owner.prevSpouseDeathDate;
+                            if (isBefore(ngayChet, ngay_SH) && isBefore(ngay_SH, ngayKH)) {
+                                results.push(`[2_KẾT HÔN//DIE→SH→KH] ${sex_CSH} ${owner.name}:
+                          • Tính chất: TÀI SẢN RIÊNG.
+                          •  Người ký văn bản: ${sex_CSH} ${owner.name}.
+                          → Phải xuất trình bản chính:
+                                - CCCD của ${sex_CSH} ${owner.name};
+                                - Giấy xác nhận tình trạng hôn nhân của ${sex_CSH} ${owner.name}
+                                  cho giai đoạn từ khi vợ/chồng chết (ngày ${formatDate(ngayChet)})
+                                  cho đến ngày kết hôn lại (ngày ${formatDate(ngayKH)});
+                                - Giấy chứng nhận đăng ký kết hôn;
+                                - GCN QSDĐ/QSHN.
+                     Ghi chú:
+                         * Giấy xác nhận TTHN phải xác nhận đủ thời gian
+                           cho giai đoạn từ khi vợ/chồng chết (ngày ${formatDate(ngayChet)})
+                           cho đến ngày kết hôn lại (ngày ${formatDate(ngayKH)});
+                         * Giấy xác nhận TTHN phải còn hạn sử dụng 06 tháng
+                           tính đến ngày nộp hồ sơ.`);
+                                ownerHasOutput = true;
+                                return;
+                            }
+                        }
+
+                        if (owner.marriageType === 'khong_phai_lan_dau' && owner.prevMarriageEndReason === 'chet' && owner.prevSpouseDeathDate) {
+                            const ngayChet = owner.prevSpouseDeathDate;
+                            if (isBeforeOrEqual(ngay_SH, ngayChet)) {
+                                const sex_PrevSpouse = getGenderLabel(owner.prevSpouseGender);
+                                results.push(`[2_KẾT HÔN//SH→DIE→KH] ${sex_CSH} ${owner.name}:
+                          • Tính chất: KHẢ NĂNG TÀI SẢN CHUNG với ${sex_PrevSpouse} ${owner.prevSpouseName}.
+                          Do ${sex_PrevSpouse} ${owner.prevSpouseName} đã chết,
+                          → Phải phân chia đối với di sản thừa kế của ${sex_PrevSpouse} ${owner.prevSpouseName}.
+                          → Sau khi phân chia di sản và đăng ký thay đổi chủ sở hữu,
+                            ${sex_CSH} ${owner.name} sẽ ký chung với những người thừa kế (nếu có).
+                     Ghi chú:
+                         Ông/bà vui lòng liên hệ trực tiếp để được hướng dẫn cụ thể,
+                         đồng thời xuất trình:
+                             - Giấy chứng nhận kết hôn với ${sex_PrevSpouse} ${owner.prevSpouseName};
+                             - Giấy chứng tử của ${sex_PrevSpouse} ${owner.prevSpouseName}.`);
+                                ownerHasOutput = true;
+                                return;
+                            }
+                        }
+                    }
+                }
+                
+                // Fallback
+                if (!ownerHasOutput) {
+                    results.push(`[CẢNH BÁO] Không tìm thấy kịch bản phù hợp cho ${sex_CSH} ${owner.name}.
+       Vui lòng kiểm tra lại ngày tháng năm sinh hoặc ngày sở hữu tài sản so với các mốc sự kiện (kết hôn, ly hôn, tuất).`);
+                }
+            });
+
+            if (data.isMortgaged === 'dang_the_chap') {
+                results.push(`[PL#_1: GIAICHAP]
+      • Cần bổ sung Văn bản giải chấp của bên Nhận thế chấp.
+      → Liên hệ với Ngân hàng để có Văn bản giải chấp (sau khi trả hết nợ).`);
+            }
+            if (data.isSecured === 'co') {
+                results.push(`[PL#_2: XOA_GDBĐ]
+      • CÓ THỂ theo yêu cầu của một số Văn phòng đăng ký đất đai
+        thì PHẢI TIẾN HÀNH XOÁ ĐĂNG KÝ GIAO DỊCH BẢO ĐẢM
+        MỚI ĐƯỢC THỰC HIỆN GIAO DỊCH.
+      → Liên hệ với VPĐK ĐẤT ĐAI để xoá đăng ký GDBĐ trên GCN QSDĐ/QSHN.`);
+            }
+            if (data.hasFinancialDebt === 'co') {
+                results.push(`[PL#_3: NO_TSDĐ]
+      • Hiện tại CHƯA THỂ thực hiện được giao dịch.
+        Lý do: vẫn còn đang nợ nghĩa vụ tài chính.
+      → Liên hệ với Cơ quan thuế để hoàn tất nghĩa vụ tài chính;
+      → Liên hệ với VPĐK ĐẤT ĐAI để đăng ký xoá ghi nợ trên GCN QSDĐ/QSHN.`);
+            }
+
+            return results;
+        };
+
+        // --- 4. EXPORT DOCX ---
+        const handleDownloadDocx = (data, results) => {
+            const sections = [];
+            const children = [];
+
+            // Header
+            children.push(new Paragraph({
+                children: [new TextRun({ text: "PHÒNG CÔNG CHỨNG SỐ 5", bold: true, size: 32 })],
+                alignment: AlignmentType.CENTER
+            }));
+            children.push(new Paragraph({
+                children: [new TextRun({ text: "HỆ THỐNG HƯỚNG DẪN HỒ SƠ BAN ĐẦU (CÁ NHÂN)", bold: true, size: 28 })],
+                alignment: AlignmentType.CENTER
+            }));
+            children.push(new Paragraph({
+                children: [new TextRun({ text: `Ngày hướng dẫn: ${formatDate(data.guidanceDate)}`, italics: true })],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 400 }
+            }));
+
+            // Part I
+            children.push(new Paragraph({
+                children: [new TextRun({ text: "I. THÔNG TIN KÊ KHAI", bold: true, size: 28 })],
+                border: { bottom: { color: "auto", space: 1, style: BorderStyle.SINGLE, size: 6 } },
+                spacing: { after: 200 }
+            }));
+
+            children.push(new Paragraph({ text: `1. Loại giao dịch: ${data.transactionType === 'tang_cho' ? 'Tặng cho' : 'Bán/Chuyển nhượng/Góp vốn/Thế chấp'}` }));
+            children.push(new Paragraph({ text: `2. Giấy chứng nhận: ${data.hasCertificate === 'co' ? 'Đã có' : 'Chưa có'}` }));
+            
+            if (data.hasCertificate === 'co') {
+                children.push(new Paragraph({ text: `3. Nguồn gốc tài sản: ${data.propertyOrigin === 'nhan_chuyen_nhuong' ? 'Mua/Nhận chuyển nhượng' : data.propertyOrigin === 'tang_cho_thua_ke' ? 'Tặng cho/Thừa kế' : 'NN công nhận'}` }));
+                children.push(new Paragraph({ text: `4. Ngày sở hữu: ${formatDate(data.propertyOwnershipDate)}` }));
+                children.push(new Paragraph({ text: `5. Thế chấp: ${data.isMortgaged === 'dang_the_chap' ? 'Đang thế chấp' : data.isMortgaged === 'da_giai_chap' ? 'Đã giải chấp' : 'Không'}` }));
+
+                children.push(new Paragraph({ 
+                    children: [new TextRun({ text: `6. Danh sách chủ sở hữu (${data.numberOfOwners} người):`, bold: true })],
+                    spacing: { before: 200 }
+                }));
+
+                data.owners.forEach((o, i) => {
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: `   ${i + 1}. ${getGenderLabel(o.gender)} ${o.name}`, bold: true }), new TextRun({ text: ` (Sinh: ${formatDate(o.birthDate)})` })],
+                    }));
+                    
+                    const statusText = o.maritalStatus === 'doc_than' ? 'Độc thân' : 'Đang có vợ/chồng';
+                    children.push(new Paragraph({ children: [new TextRun({ text: `     - Tình trạng: ${statusText}` })] }));
+
+                    if (o.maritalStatus === 'doc_than') {
+                        let singleType = '';
+                        if (o.singleStatusType === 'chua_ket_hon') {
+                            singleType = 'Chưa kết hôn lần nào';
+                            children.push(new Paragraph({ children: [new TextRun({ text: `     - Chi tiết: ${singleType}` })] }));
+                        }
+                        else if (o.singleStatusType === 'da_ly_hon') {
+                            singleType = 'Đã ly hôn';
+                            children.push(new Paragraph({ children: [new TextRun({ text: `     - Chi tiết: ${singleType}` })] }));
+                            if (o.divorceDate) children.push(new Paragraph({ children: [new TextRun({ text: `     - Ngày ly hôn: ${formatDate(o.divorceDate)}` })] }));
+                            if (o.exSpouseNameDivorce) children.push(new Paragraph({ children: [new TextRun({ text: `     - Vợ/chồng cũ (Ly hôn): ${getGenderLabel(o.exSpouseGenderDivorce)} ${o.exSpouseNameDivorce}` })] }));
+                        }
+                        else if (o.singleStatusType === 'vo_chong_chet') {
+                            singleType = 'Vợ/chồng đã chết';
+                            children.push(new Paragraph({ children: [new TextRun({ text: `     - Chi tiết: ${singleType}` })] }));
+                            if (o.spouseDeathDate) children.push(new Paragraph({ children: [new TextRun({ text: `     - Ngày vợ/chồng chết: ${formatDate(o.spouseDeathDate)}` })] }));
+                            if (o.exSpouseNameDeath) children.push(new Paragraph({ children: [new TextRun({ text: `     - Vợ/chồng cũ (Đã mất): ${getGenderLabel(o.exSpouseGenderDeath)} ${o.exSpouseNameDeath}` })] }));
+                        }
+                    }
+
+                    if (o.maritalStatus === 'co_vo_chong') {
+                        children.push(new Paragraph({ children: [new TextRun({ text: `     - Ngày đăng ký kết hôn: ${formatDate(o.marriageDate)}` })] }));
+                        children.push(new Paragraph({ children: [new TextRun({ text: `     - Vợ/chồng hiện tại: ${getGenderLabel(o.currentSpouseGender)} ${o.currentSpouseName || 'N/A'}` })] }));
+                        
+                        const mType = o.marriageType === 'lan_dau' ? 'Lần đầu' : 'Không phải lần đầu';
+                        children.push(new Paragraph({ children: [new TextRun({ text: `     - Loại kết hôn: ${mType}` })] }));
+
+                        if (o.marriageType === 'khong_phai_lan_dau') {
+                            if (o.prevMarriageEndReason === 'ly_hon') {
+                                children.push(new Paragraph({ children: [new TextRun({ text: `     - Lý do chấm dứt lần trước: Ly hôn` })] }));
+                                if (o.prevDivorceDate) children.push(new Paragraph({ children: [new TextRun({ text: `     - Ngày ly hôn trước: ${formatDate(o.prevDivorceDate)}` })] }));
+                                if (o.prevSpouseName) children.push(new Paragraph({ children: [new TextRun({ text: `     - Vợ/chồng trước: ${getGenderLabel(o.prevSpouseGender)} ${o.prevSpouseName}` })] }));
+                            } 
+                            else if (o.prevMarriageEndReason === 'chet') {
+                                children.push(new Paragraph({ children: [new TextRun({ text: `     - Lý do chấm dứt lần trước: Vợ/chồng chết` })] }));
+                                if (o.prevSpouseDeathDate) children.push(new Paragraph({ children: [new TextRun({ text: `     - Ngày vợ/chồng trước chết: ${formatDate(o.prevSpouseDeathDate)}` })] }));
+                                if (o.prevSpouseName) children.push(new Paragraph({ children: [new TextRun({ text: `     - Vợ/chồng trước: ${getGenderLabel(o.prevSpouseGender)} ${o.prevSpouseName}` })] }));
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Part II - Results
+            children.push(new Paragraph({
+                children: [new TextRun({ text: "II. KẾT QUẢ HƯỚNG DẪN", bold: true, size: 28 })],
+                border: { bottom: { color: "auto", space: 1, style: BorderStyle.SINGLE, size: 6 } },
+                spacing: { before: 400, after: 200 }
+            }));
+
+            if (results.length === 0) {
+                 children.push(new Paragraph({ text: "Không có hướng dẫn cụ thể." }));
+            } else {
+                results.forEach((res, idx) => {
+                    const lines = res.split('\n');
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: `[MỤC ${idx + 1}]`, bold: true, color: "2E7D32" })],
+                        spacing: { before: 200 }
+                    }));
+                    lines.forEach(line => {
+                         children.push(new Paragraph({ text: line.trim() }));
+                    });
+                });
+            }
+
+            // Footer
+            children.push(new Paragraph({
+                children: [new TextRun({ text: "[GHI CHÚ QUAN TRỌNG]", bold: true })],
+                spacing: { before: 600 }
+            }));
+            children.push(new Paragraph({
+                text: "Nội dung hướng dẫn nêu trên chỉ mang TÍNH CHẤT THAM KHẢO dựa trên dữ liệu Quý khách cung cấp. Quý khách vui lòng liên hệ trực tiếp cán bộ nghiệp vụ để được hướng dẫn chi tiết.",
+                italics: true
+            }));
+            children.push(new Paragraph({
+                text: "PHIÊN BẢN HƯỚNG DẪN HỒ SƠ CÔNG CHỨNG CỦA PHÒNG CÔNG CHỨNG SỐ 5 - PHIÊN BẢN 3.9.",
+                italics: true,
+                spacing: { before: 200 }
+            }));
+
+            const doc = new Document({
+                sections: [{ children: children }]
+            });
+
+            Packer.toBlob(doc).then(blob => {
+                saveAs(blob, `Phieu_Huong_Dan_${data.guidanceDate}.docx`);
+            });
+        };
+
+        // --- 5. UI COMPONENTS ---
+        const Label = ({ children, required }) => (
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+                {children} {required && <span className="text-red-500">*</span>}
+            </label>
+        );
+
+        const Input = ({ error, className, ...props }) => (
+            <div className="w-full">
+                <input
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors ${
+                        error 
+                        ? 'border-red-500 focus:ring-red-200 bg-red-50' 
+                        : 'border-slate-300 focus:ring-blue-500'
+                    } ${className || ''}`}
+                    {...props}
+                />
+                {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+            </div>
+        );
+
+        const Select = ({ children, error, ...props }) => (
+            <div className="w-full">
+                <select
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors bg-white ${
+                    error 
+                    ? 'border-red-500 focus:ring-red-200 bg-red-50' 
+                    : 'border-slate-300 focus:ring-blue-500'
+                }`}
+                {...props}
+                >
+                {children}
+                </select>
+                {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+            </div>
+        );
+
+        const RadioGroup = ({ label, name, options, value, onChange, error }) => (
+            <div className={`mb-4 ${error ? 'p-3 border border-red-200 rounded bg-red-50' : ''}`}>
+                <Label required={true}>{label}</Label>
+                <div className="flex flex-col space-y-2 mt-2">
+                {options.map((opt) => (
+                    <label key={opt.value} className="inline-flex items-center">
+                    <input
+                        type="radio"
+                        name={name}
+                        value={opt.value}
+                        checked={value === opt.value}
+                        onChange={(e) => onChange(e.target.value)}
+                        className="form-radio text-blue-600 h-4 w-4"
+                    />
+                    <span className="ml-2 text-slate-700">{opt.label}</span>
+                    </label>
+                ))}
+                </div>
+                {error && <p className="text-red-500 text-xs mt-2 font-medium">{error}</p>}
+            </div>
+        );
+
+        // --- 6. MAIN APP ---
+        function App() {
+            const [step, setStep] = useState(0);
+            const [formData, setFormData] = useState(initialFormData);
+            const [results, setResults] = useState([]);
+            const [completed, setCompleted] = useState(false);
+            const [errors, setErrors] = useState({});
+
+            const updateData = (field, value) => {
+                setFormData(prev => ({ ...prev, [field]: value }));
+                if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
+            };
+
+            const updateOwner = (index, field, value) => {
+                const newOwners = [...formData.owners];
+                newOwners[index] = { ...newOwners[index], [field]: value };
+                setFormData(prev => ({ ...prev, owners: newOwners }));
+                const errorKey = `${field}`; 
+                if (errors[errorKey]) setErrors(prev => ({ ...prev, [errorKey]: '' }));
+            };
+
+            const validateCurrentStep = () => {
+                const newErrors = {};
+                // Step 0
+                if (step === 0) {
+                    if (!formData.guidanceDate) newErrors['guidanceDate'] = "Vui lòng nhập Ngày hướng dẫn";
+                    if (!formData.transactionType) newErrors['transactionType'] = "Vui lòng chọn Loại giao dịch";
+                }
+                // Step 1
+                if (step === 1) {
+                    if (!formData.hasCertificate) newErrors['hasCertificate'] = "Vui lòng chọn tình trạng Giấy chứng nhận";
+                }
+                // Step 2
+                if (step === 2) {
+                    if (!formData.numberOfOwners || formData.numberOfOwners < 1) newErrors['numberOfOwners'] = "Số lượng chủ sở hữu phải ít nhất là 1";
+                    if (!formData.propertyOrigin) newErrors['propertyOrigin'] = "Vui lòng chọn Nguồn gốc tài sản";
+                    if (!formData.propertyOwnershipDate) newErrors['propertyOwnershipDate'] = "Vui lòng nhập Ngày bắt đầu sở hữu";
+                    if (!formData.isMortgaged) newErrors['isMortgaged'] = "Vui lòng chọn Tình trạng thế chấp";
+                    if (!formData.isSecured) newErrors['isSecured'] = "Vui lòng chọn Tình trạng đăng ký giao dịch bảo đảm";
+                    if (!formData.hasFinancialDebt) newErrors['hasFinancialDebt'] = "Vui lòng chọn Tình trạng nợ nghĩa vụ tài chính";
+                }
+                // Owner Details
+                if (step > 2) {
+                    const index = step - 3;
+                    const owner = formData.owners[index];
+                    const pDate = new Date(formData.propertyOwnershipDate);
+
+                    if (!owner.name) newErrors['name'] = "Vui lòng nhập Họ tên chủ sở hữu";
+                    if (!owner.birthDate) newErrors['birthDate'] = "Vui lòng nhập Ngày sinh chủ sở hữu";
+                    if (!owner.gender) newErrors['gender'] = "Vui lòng chọn Cách xưng hô";
+                    if (!owner.maritalStatus) newErrors['maritalStatus'] = "Vui lòng chọn Tình trạng hôn nhân";
+
+                    if (owner.maritalStatus === 'doc_than') {
+                        if (!owner.singleStatusType) newErrors['singleStatusType'] = "Vui lòng chọn chi tiết";
+                        
+                        if (owner.singleStatusType === 'da_ly_hon') {
+                            if (!owner.divorceDate) newErrors['divorceDate'] = "Vui lòng nhập Ngày ly hôn";
+                            const dDate = new Date(owner.divorceDate);
+                            if (formData.propertyOwnershipDate && pDate <= dDate) {
+                                if (!owner.exSpouseNameDivorce) newErrors['exSpouseNameDivorce'] = "Vui lòng nhập Họ tên vợ/chồng cũ";
+                                if (!owner.exSpouseGenderDivorce) newErrors['exSpouseGenderDivorce'] = "Vui lòng chọn Xưng hô";
+                            }
+                        }
+                        if (owner.singleStatusType === 'vo_chong_chet') {
+                            if (!owner.spouseDeathDate) newErrors['spouseDeathDate'] = "Vui lòng nhập Ngày vợ/chồng chết";
+                            const dDate = new Date(owner.spouseDeathDate);
+                            if (formData.propertyOwnershipDate && pDate <= dDate) {
+                                if (!owner.exSpouseNameDeath) newErrors['exSpouseNameDeath'] = "Vui lòng nhập Họ tên vợ/chồng đã mất";
+                                if (!owner.exSpouseGenderDeath) newErrors['exSpouseGenderDeath'] = "Vui lòng chọn Xưng hô";
+                            }
+                        }
+                    }
+                    if (owner.maritalStatus === 'co_vo_chong') {
+                        if (!owner.marriageDate) newErrors['marriageDate'] = "Vui lòng nhập Ngày ĐK kết hôn";
+                        const mDate = new Date(owner.marriageDate);
+                        
+                        if (formData.propertyOwnershipDate && mDate <= pDate) {
+                            if (!owner.currentSpouseName) newErrors['currentSpouseName'] = "Vui lòng nhập Họ tên vợ/chồng hiện tại";
+                            if (!owner.currentSpouseGender) newErrors['currentSpouseGender'] = "Vui lòng chọn Xưng hô";
+                        }
+                        if (!owner.marriageType) newErrors['marriageType'] = "Vui lòng chọn Chi tiết kết hôn";
+
+                        if (owner.marriageType === 'khong_phai_lan_dau') {
+                            if (!owner.prevMarriageEndReason) newErrors['prevMarriageEndReason'] = "Vui lòng chọn Lý do chấm dứt";
+                            
+                            if (owner.prevMarriageEndReason === 'ly_hon') {
+                                if (!owner.prevDivorceDate) newErrors['prevDivorceDate'] = "Vui lòng nhập Ngày ly hôn trước";
+                                const pdDate = new Date(owner.prevDivorceDate);
+                                if (formData.propertyOwnershipDate && pDate <= pdDate) {
+                                    if (!owner.prevSpouseName) newErrors['prevSpouseName'] = "Vui lòng nhập Họ tên vợ/chồng trước";
+                                    if (!owner.prevSpouseGender) newErrors['prevSpouseGender'] = "Vui lòng chọn Xưng hô";
+                                }
+                            }
+                            if (owner.prevMarriageEndReason === 'chet') {
+                                if (!owner.prevSpouseDeathDate) newErrors['prevSpouseDeathDate'] = "Vui lòng nhập Ngày vợ/chồng trước chết";
+                                const pdDate = new Date(owner.prevSpouseDeathDate);
+                                if (formData.propertyOwnershipDate && pDate <= pdDate) {
+                                    if (!owner.prevSpouseName) newErrors['prevSpouseName'] = "Vui lòng nhập Họ tên vợ/chồng trước";
+                                    if (!owner.prevSpouseGender) newErrors['prevSpouseGender'] = "Vui lòng chọn Xưng hô";
+                                }
+                            }
+                        }
+                    }
+                }
+                return newErrors;
+            };
+
+            const handleContinue = () => {
+                const currentErrors = validateCurrentStep();
+                if (Object.keys(currentErrors).length > 0) {
+                    setErrors(currentErrors);
+                    window.scrollTo({ top: 100, behavior: 'smooth' });
+                    return;
+                }
+                setErrors({});
+
+                if (step === 1 && formData.hasCertificate === 'khong') {
+                   setResults(["[Hướng dẫn]: HS KHÔNG ĐỦ ĐIỀU KIỆN ĐỂ CÔNG CHỨNG"]);
+                   setCompleted(true);
+                   return;
+                }
+                
+                if (step === 2) {
+                    const currentCount = formData.owners.length;
+                    const targetCount = Number(formData.numberOfOwners) || 1;
+                    if (targetCount !== currentCount) {
+                        const newOwners = [...formData.owners];
+                        if (targetCount > currentCount) {
+                            for (let i = currentCount; i < targetCount; i++) {
+                                newOwners.push({ ...initialOwner, id: i + 1 });
+                            }
+                        } else {
+                            newOwners.splice(targetCount);
+                        }
+                        setFormData(prev => ({ ...prev, owners: newOwners }));
+                    }
+                }
+
+                if (step === 2 + formData.owners.length) {
+                    handleFinish();
+                } else {
+                    setStep(prev => prev + 1);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            };
+
+            const handleBack = () => {
+                setStep(prev => prev - 1);
+                setErrors({});
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const handleFinish = () => {
+                const generated = generateGuidance(formData);
+                setResults(generated);
+                setCompleted(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const resetApp = () => {
+                setFormData(initialFormData);
+                setStep(0);
+                setCompleted(false);
+                setResults([]);
+                setErrors({});
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const onDownload = () => {
+                handleDownloadDocx(formData, results);
+            };
+
+            const renderStep0 = () => (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                        <h2 className="text-lg font-semibold text-blue-800 flex items-center gap-2">
+                            <Icons.ScrollText /> Thông tin chung
+                        </h2>
+                    </div>
+                    <div>
+                        <Label required>Ngày hướng dẫn (Hôm nay)</Label>
+                        <Input 
+                            type="date" 
+                            value={formData.guidanceDate} 
+                            onChange={(e) => updateData('guidanceDate', e.target.value)} 
+                            error={errors['guidanceDate']}
+                        />
+                    </div>
+                    <RadioGroup
+                        label="Loại giao dịch dự định thực hiện?"
+                        name="transactionType"
+                        value={formData.transactionType}
+                        onChange={(v) => updateData('transactionType', v)}
+                        options={[
+                            { value: 'tang_cho', label: 'Tặng cho' },
+                            { value: 'mua_ban_khac', label: 'Bán / Chuyển nhượng / Góp vốn / Thế chấp' }
+                        ]}
+                        error={errors['transactionType']}
+                    />
+                </div>
+            );
+
+            const renderStep1 = () => (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                        <h2 className="text-lg font-semibold text-blue-800 flex items-center gap-2">
+                            <Icons.Home /> Tình trạng Giấy chứng nhận
+                        </h2>
+                    </div>
+                    <RadioGroup
+                        label="Nhà/đất đã có Giấy chứng nhận QSDĐ/QSHN chưa?"
+                        name="hasCertificate"
+                        value={formData.hasCertificate}
+                        onChange={(v) => updateData('hasCertificate', v)}
+                        options={[
+                            { value: 'co', label: 'Có' },
+                            { value: 'khong', label: 'Không có' }
+                        ]}
+                        error={errors['hasCertificate']}
+                    />
+                </div>
+            );
+
+            const renderStep2 = () => (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                        <h2 className="text-lg font-semibold text-blue-800 flex items-center gap-2">
+                            <Icons.User /> Thông tin Chủ sở hữu & Nguồn gốc
+                        </h2>
+                    </div>
+                    <div>
+                        <Label required>Số lượng chủ sở hữu (Người đứng tên trên GCN)</Label>
+                        <Input 
+                            type="number" 
+                            min={1} 
+                            value={formData.numberOfOwners} 
+                            onChange={(e) => updateData('numberOfOwners', e.target.value === '' ? '' : parseInt(e.target.value))} 
+                            error={errors['numberOfOwners']}
+                        />
+                    </div>
+                    <div className="pt-4 border-t border-slate-200">
+                        <h3 className="font-semibold text-slate-800 mb-3">Nguồn gốc & Tình trạng tài sản</h3>
+                        <RadioGroup
+                        label="Tài sản có được từ giao dịch nào?"
+                        name="propertyOrigin"
+                        value={formData.propertyOrigin}
+                        onChange={(v) => updateData('propertyOrigin', v)}
+                        options={[
+                            { value: 'nhan_chuyen_nhuong', label: 'Mua / Nhận chuyển nhượng / Góp vốn / Thuê đất' },
+                            { value: 'tang_cho_thua_ke', label: 'Được tặng cho / Thừa kế' },
+                            { value: 'nha_nuoc_cong_nhan', label: 'TRỰC TIẾP được nhà nước công nhận QSDĐ' }
+                        ]}
+                        error={errors['propertyOrigin']}
+                        />
+                        <div className="mb-4">
+                        <Label required>Ngày BẮT ĐẦU SỞ HỮU tài sản?</Label>
+                        <Input 
+                            type="date" 
+                            value={formData.propertyOwnershipDate} 
+                            onChange={(e) => updateData('propertyOwnershipDate', e.target.value)} 
+                            error={errors['propertyOwnershipDate']}
+                        />
+                        <div className="text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded border border-slate-200">
+                             <p className="font-semibold mb-1">Lưu ý ghi ngày:</p>
+                             <ul className="list-disc list-inside space-y-1">
+                                 <li>Nếu sở hữu do nhận chuyển quyền: Ghi theo ngày Đăng ký THAY ĐỔI CHỦ SỞ HỮU được ghi trên GCN.</li>
+                                 <li>Nếu TRỰC TIẾP ĐƯỢC nhà nước công nhận QSDĐ: KHÔNG ghi ngày cấp GCN. Ghi ngày TẠO DỰNG TÀI SẢN TRƯỚC ĐÂY.</li>
+                                 <li>Các trường hợp còn lại: Ghi theo ngày cấp GCN QSDĐ.</li>
+                             </ul>
+                        </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <RadioGroup
+                            label="Tình trạng thế chấp?"
+                            name="isMortgaged"
+                            value={formData.isMortgaged}
+                            onChange={(v) => updateData('isMortgaged', v)}
+                            options={[
+                                { value: 'dang_the_chap', label: 'Đang thế chấp' },
+                                { value: 'da_giai_chap', label: 'Đã giải chấp' },
+                                { value: 'khong_the_chap', label: 'Không thế chấp' }
+                            ]}
+                            error={errors['isMortgaged']}
+                            />
+                            <RadioGroup
+                            label="Đang đăng ký giao dịch bảo đảm?"
+                            name="isSecured"
+                            value={formData.isSecured}
+                            onChange={(v) => updateData('isSecured', v)}
+                            options={[
+                                { value: 'co', label: 'Có' },
+                                { value: 'khong', label: 'Không' }
+                            ]}
+                            error={errors['isSecured']}
+                            />
+                        </div>
+                        <RadioGroup
+                            label='Trên GCN có ghi "Nợ nghĩa vụ tài chính"?'
+                            name="hasFinancialDebt"
+                            value={formData.hasFinancialDebt}
+                            onChange={(v) => updateData('hasFinancialDebt', v)}
+                            options={[
+                                { value: 'co', label: 'Có' },
+                                { value: 'khong', label: 'Không' }
+                            ]}
+                            error={errors['hasFinancialDebt']}
+                            />
+                    </div>
+                </div>
+            );
+
+            const renderOwnerDetailsStep = (ownerIndex) => {
+                const owner = formData.owners[ownerIndex];
+                return (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex justify-between items-center">
+                    <h2 className="text-lg font-semibold text-blue-800">
+                        Chi tiết Chủ sở hữu thứ {ownerIndex + 1}
+                    </h2>
+                    <span className="text-sm text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                        {ownerIndex + 1} / {formData.owners.length}
+                    </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label required>Họ và tên</Label>
+                            <Input 
+                                value={owner.name} 
+                                onChange={(e) => updateOwner(ownerIndex, 'name', e.target.value.toUpperCase())}
+                                placeholder="NGUYỄN VĂN A"
+                                error={errors['name']}
+                            />
+                        </div>
+                        <div>
+                            <Label required>Ngày sinh</Label>
+                            <Input 
+                                type="date"
+                                value={owner.birthDate} 
+                                onChange={(e) => updateOwner(ownerIndex, 'birthDate', e.target.value)}
+                                error={errors['birthDate']}
+                            />
+                            <p className="text-sm text-blue-600 mt-1 italic">
+                                Tính {getAgeExact(owner.birthDate, formData.guidanceDate)} tuổi = ({formatDate(formData.guidanceDate)} - {formatDate(owner.birthDate)}) / 365.25
+                            </p>
+                        </div>
+                    </div>
+                    <div className={`mt-2 ${errors['gender'] ? 'p-3 bg-red-50 border border-red-200 rounded' : ''}`}>
+                        <Label required>Cách xưng hô</Label>
+                        <div className="flex space-x-4 mt-2">
+                            <label className="inline-flex items-center">
+                                <input type="radio" checked={owner.gender === 'ong'} onChange={() => updateOwner(ownerIndex, 'gender', 'ong')} className="form-radio h-4 w-4 text-blue-600"/>
+                                <span className="ml-2">Ông</span>
+                            </label>
+                            <label className="inline-flex items-center">
+                                <input type="radio" checked={owner.gender === 'ba'} onChange={() => updateOwner(ownerIndex, 'gender', 'ba')} className="form-radio h-4 w-4 text-blue-600"/>
+                                <span className="ml-2">Bà</span>
+                            </label>
+                        </div>
+                        {errors['gender'] && <p className="text-red-500 text-xs mt-2 font-medium">{errors['gender']}</p>}
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-200">
+                    <div className={`${errors['maritalStatus'] ? 'p-3 bg-red-50 border border-red-200 rounded' : ''}`}>
+                        <Label required>Tình trạng hôn nhân</Label>
+                        <div className="flex space-x-6 mt-2 mb-4">
+                                <label className="inline-flex items-center">
+                                    <input type="radio" 
+                                        name={`ms-${owner.id}`}
+                                        checked={owner.maritalStatus === 'doc_than'} 
+                                        onChange={() => updateOwner(ownerIndex, 'maritalStatus', 'doc_than')} 
+                                        className="form-radio h-4 w-4 text-blue-600"/>
+                                    <span className="ml-2 font-medium">Đang độc thân</span>
+                                </label>
+                                <label className="inline-flex items-center">
+                                    <input type="radio" 
+                                        name={`ms-${owner.id}`}
+                                        checked={owner.maritalStatus === 'co_vo_chong'} 
+                                        onChange={() => updateOwner(ownerIndex, 'maritalStatus', 'co_vo_chong')} 
+                                        className="form-radio h-4 w-4 text-blue-600"/>
+                                    <span className="ml-2 font-medium">Đang có vợ/chồng</span>
+                                </label>
+                            </div>
+                            {errors['maritalStatus'] && <p className="text-red-500 text-xs mt-1 font-medium">{errors['maritalStatus']}</p>}
+                        </div>
+
+                        {owner.maritalStatus === 'doc_than' && (
+                            <div className="bg-slate-50 p-4 rounded border border-slate-200 space-y-4">
+                                <Label required>Chi tiết tình trạng độc thân:</Label>
+                                <Select 
+                                    value={owner.singleStatusType || ''}
+                                    onChange={(e) => updateOwner(ownerIndex, 'singleStatusType', e.target.value)}
+                                    error={errors['singleStatusType']}
+                                >
+                                    <option value="">-- Chọn --</option>
+                                    <option value="chua_ket_hon">Chưa kết hôn lần nào</option>
+                                    <option value="da_ly_hon">Đã ly hôn</option>
+                                    <option value="vo_chong_chet">Vợ/chồng đã chết</option>
+                                </Select>
+
+                                {owner.singleStatusType === 'da_ly_hon' && (
+                                    <div className="pl-4 border-l-2 border-blue-300 space-y-3">
+                                        <div>
+                                            <Label required>Ngày ly hôn</Label>
+                                            <Input type="date" value={owner.divorceDate || ''} onChange={(e) => updateOwner(ownerIndex, 'divorceDate', e.target.value)} error={errors['divorceDate']} />
+                                            <p className="text-xs text-slate-500 mt-1">Vui lòng ghi đúng theo Bản án ly hôn hoặc theo Giấy xác nhận tình trạng hôn nhân (nếu có).</p>
+                                        </div>
+                                        {formData.propertyOwnershipDate && owner.divorceDate && 
+                                        new Date(formData.propertyOwnershipDate) <= new Date(owner.divorceDate) && (
+                                            <div className="animate-fade-in bg-white p-3 border border-slate-200 rounded">
+                                                <div className="mb-2">
+                                                    <Label required>Họ tên Vợ/Chồng cũ</Label>
+                                                    <Input value={owner.exSpouseNameDivorce || ''} onChange={(e) => updateOwner(ownerIndex, 'exSpouseNameDivorce', e.target.value.toUpperCase())} error={errors['exSpouseNameDivorce']} />
+                                                </div>
+                                                <div className={`${errors['exSpouseGenderDivorce'] ? 'p-2 bg-red-50 rounded border border-red-200' : ''}`}>
+                                                    <div className="flex gap-4">
+                                                        <Label required>Xưng hô:</Label>
+                                                        <label><input type="radio" checked={owner.exSpouseGenderDivorce === 'ong'} onChange={() => updateOwner(ownerIndex, 'exSpouseGenderDivorce', 'ong')} /> Ông</label>
+                                                        <label><input type="radio" checked={owner.exSpouseGenderDivorce === 'ba'} onChange={() => updateOwner(ownerIndex, 'exSpouseGenderDivorce', 'ba')} /> Bà</label>
+                                                    </div>
+                                                    {errors['exSpouseGenderDivorce'] && <p className="text-red-500 text-xs mt-1">{errors['exSpouseGenderDivorce']}</p>}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {owner.singleStatusType === 'vo_chong_chet' && (
+                                    <div className="pl-4 border-l-2 border-gray-500 space-y-3">
+                                        <div>
+                                            <Label required>Ngày vợ/chồng chết</Label>
+                                            <Input type="date" value={owner.spouseDeathDate || ''} onChange={(e) => updateOwner(ownerIndex, 'spouseDeathDate', e.target.value)} error={errors['spouseDeathDate']} />
+                                            <p className="text-xs text-slate-500 mt-1">Vui lòng ghi đúng theo Giấy chứng tử hoặc Giấy xác nhận tình trạng hôn nhân (nếu có).</p>
+                                        </div>
+                                        {formData.propertyOwnershipDate && owner.spouseDeathDate && 
+                                        new Date(formData.propertyOwnershipDate) <= new Date(owner.spouseDeathDate) && (
+                                            <div className="animate-fade-in bg-white p-3 border border-slate-200 rounded">
+                                                <div className="mb-2">
+                                                    <Label required>Họ tên Vợ/Chồng đã mất</Label>
+                                                    <Input value={owner.exSpouseNameDeath || ''} onChange={(e) => updateOwner(ownerIndex, 'exSpouseNameDeath', e.target.value.toUpperCase())} error={errors['exSpouseNameDeath']} />
+                                                </div>
+                                                <div className={`${errors['exSpouseGenderDeath'] ? 'p-2 bg-red-50 rounded border border-red-200' : ''}`}>
+                                                    <div className="flex gap-4">
+                                                        <Label required>Xưng hô:</Label>
+                                                        <label><input type="radio" checked={owner.exSpouseGenderDeath === 'ong'} onChange={() => updateOwner(ownerIndex, 'exSpouseGenderDeath', 'ong')} /> Ông</label>
+                                                        <label><input type="radio" checked={owner.exSpouseGenderDeath === 'ba'} onChange={() => updateOwner(ownerIndex, 'exSpouseGenderDeath', 'ba')} /> Bà</label>
+                                                    </div>
+                                                    {errors['exSpouseGenderDeath'] && <p className="text-red-500 text-xs mt-1">{errors['exSpouseGenderDeath']}</p>}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {owner.maritalStatus === 'co_vo_chong' && (
+                            <div className="bg-slate-50 p-4 rounded border border-slate-200 space-y-4">
+                                <div>
+                                    <Label required>Ngày đăng ký kết hôn</Label>
+                                    <Input type="date" value={owner.marriageDate || ''} onChange={(e) => updateOwner(ownerIndex, 'marriageDate', e.target.value)} error={errors['marriageDate']} />
+                                </div>
+                                {formData.propertyOwnershipDate && owner.marriageDate && 
+                                new Date(owner.marriageDate) <= new Date(formData.propertyOwnershipDate) && (
+                                    <div className="animate-fade-in bg-white p-3 border border-slate-200 rounded">
+                                        <div className="mb-2">
+                                            <Label required>Họ tên Vợ/Chồng hiện tại</Label>
+                                            <Input value={owner.currentSpouseName || ''} onChange={(e) => updateOwner(ownerIndex, 'currentSpouseName', e.target.value.toUpperCase())} error={errors['currentSpouseName']} />
+                                        </div>
+                                        <div className={`${errors['currentSpouseGender'] ? 'p-2 bg-red-50 rounded border border-red-200' : ''}`}>
+                                            <div className="flex gap-4">
+                                                <Label required>Xưng hô với Vợ/Chồng hiện tại:</Label>
+                                                <label><input type="radio" checked={owner.currentSpouseGender === 'ong'} onChange={() => updateOwner(ownerIndex, 'currentSpouseGender', 'ong')} /> Ông</label>
+                                                <label><input type="radio" checked={owner.currentSpouseGender === 'ba'} onChange={() => updateOwner(ownerIndex, 'currentSpouseGender', 'ba')} /> Bà</label>
+                                            </div>
+                                            {errors['currentSpouseGender'] && <p className="text-red-500 text-xs mt-1">{errors['currentSpouseGender']}</p>}
+                                        </div>
+                                    </div>
+                                )}
+                                <div className={`pt-2 ${errors['marriageType'] ? 'p-2 bg-red-50 rounded border border-red-200' : ''}`}>
+                                    <Label required>Chi tiết kết hôn:</Label>
+                                    <div className="flex flex-col space-y-2 mt-1">
+                                        <label className="inline-flex items-center">
+                                            <input type="radio" name={`mt-${owner.id}`} checked={owner.marriageType === 'lan_dau'} onChange={() => updateOwner(ownerIndex, 'marriageType', 'lan_dau')} className="form-radio text-blue-600"/>
+                                            <span className="ml-2">KẾT HÔN LẦN ĐẦU</span>
+                                        </label>
+                                        <label className="inline-flex items-center">
+                                            <input type="radio" name={`mt-${owner.id}`} checked={owner.marriageType === 'khong_phai_lan_dau'} onChange={() => updateOwner(ownerIndex, 'marriageType', 'khong_phai_lan_dau')} className="form-radio text-blue-600"/>
+                                            <span className="ml-2">KHÔNG PHẢI KẾT HÔN LẦN ĐẦU</span>
+                                        </label>
+                                    </div>
+                                    {errors['marriageType'] && <p className="text-red-500 text-xs mt-1">{errors['marriageType']}</p>}
+                                </div>
+
+                                {owner.marriageType === 'khong_phai_lan_dau' && (
+                                    <div className="pl-4 border-l-2 border-orange-300 space-y-3 mt-2">
+                                        <div className={`${errors['prevMarriageEndReason'] ? 'p-2 bg-red-50 rounded border border-red-200' : ''}`}>
+                                            <Label required>Lý do chấm dứt hôn nhân trước đây:</Label>
+                                            <div className="flex space-x-4">
+                                                <label><input type="radio" name={`pr-${owner.id}`} checked={owner.prevMarriageEndReason === 'ly_hon'} onChange={() => updateOwner(ownerIndex, 'prevMarriageEndReason', 'ly_hon')} /> LY HÔN</label>
+                                                <label><input type="radio" name={`pr-${owner.id}`} checked={owner.prevMarriageEndReason === 'chet'} onChange={() => updateOwner(ownerIndex, 'prevMarriageEndReason', 'chet')} /> VỢ/CHỒNG ĐÃ CHẾT</label>
+                                            </div>
+                                            {errors['prevMarriageEndReason'] && <p className="text-red-500 text-xs mt-1">{errors['prevMarriageEndReason']}</p>}
+                                        </div>
+                                        {owner.prevMarriageEndReason === 'ly_hon' && (
+                                            <div>
+                                                <Label required>Ngày ly hôn trước đây</Label>
+                                                <Input type="date" value={owner.prevDivorceDate || ''} onChange={(e) => updateOwner(ownerIndex, 'prevDivorceDate', e.target.value)} error={errors['prevDivorceDate']} />
+                                                <p className="text-xs text-slate-500 mt-1">Ghi đúng theo Bản án ly hôn hoặc theo Giấy xác nhận tình trạng hôn nhân (nếu có).</p>
+                                            </div>
+                                        )}
+                                        {owner.prevMarriageEndReason === 'chet' && (
+                                            <div>
+                                                <Label required>Ngày vợ/chồng trước chết</Label>
+                                                <Input type="date" value={owner.prevSpouseDeathDate || ''} onChange={(e) => updateOwner(ownerIndex, 'prevSpouseDeathDate', e.target.value)} error={errors['prevSpouseDeathDate']} />
+                                                <p className="text-xs text-slate-500 mt-1">Ghi đúng theo Giấy chứng tử hoặc Giấy xác nhận tình trạng hôn nhân.</p>
+                                            </div>
+                                        )}
+                                        {formData.propertyOwnershipDate && (
+                                            (owner.prevMarriageEndReason === 'ly_hon' && owner.prevDivorceDate && new Date(formData.propertyOwnershipDate) <= new Date(owner.prevDivorceDate))
+                                            ||
+                                            (owner.prevMarriageEndReason === 'chet' && owner.prevSpouseDeathDate && new Date(formData.propertyOwnershipDate) <= new Date(owner.prevSpouseDeathDate))
+                                        ) && (
+                                            <div className="animate-fade-in bg-white p-3 border border-slate-200 rounded">
+                                                <Label required>Thông tin Vợ/Chồng trước đây:</Label>
+                                                <div className="grid grid-cols-2 gap-2 mt-1">
+                                                    <div className="w-full">
+                                                        <Input placeholder="Họ tên" value={owner.prevSpouseName || ''} onChange={(e) => updateOwner(ownerIndex, 'prevSpouseName', e.target.value.toUpperCase())} error={errors['prevSpouseName']} />
+                                                    </div>
+                                                    <div className={`flex items-center gap-2 ${errors['prevSpouseGender'] ? 'p-2 bg-red-50 rounded border border-red-200' : ''}`}>
+                                                        <label><input type="radio" checked={owner.prevSpouseGender === 'ong'} onChange={() => updateOwner(ownerIndex, 'prevSpouseGender', 'ong')} /> Ông</label>
+                                                        <label><input type="radio" checked={owner.prevSpouseGender === 'ba'} onChange={() => updateOwner(ownerIndex, 'prevSpouseGender', 'ba')} /> Bà</label>
+                                                        {errors['prevSpouseGender'] && <span className="text-red-500 text-xs">!</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                );
+            };
+
+            const renderResults = () => (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="bg-green-50 p-6 rounded-lg border border-green-200 text-center">
+                        <div className="flex justify-center mb-4">
+                            <Icons.CheckCircle />
+                        </div>
+                        <h2 className="text-2xl font-bold text-green-800">Kết quả hướng dẫn</h2>
+                        <p className="text-green-700 mt-2">Dưới đây là danh sách hồ sơ cần chuẩn bị dựa trên thông tin bạn cung cấp.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                        {results.length === 0 ? (
+                            <div className="p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded flex gap-2">
+                            <Icons.AlertTriangle /> Không có hướng dẫn cụ thể nào được tạo ra. Vui lòng kiểm tra lại ngày tháng năm sinh hoặc ngày sở hữu tài sản.
+                            </div>
+                        ) : (
+                            results.map((res, idx) => (
+                                <div key={idx} className="bg-white p-5 rounded-lg shadow border border-slate-200 whitespace-pre-line">
+                                    {res}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                    
+                    <div className="bg-slate-100 p-4 rounded-lg text-slate-600 text-sm italic border-t-2 border-slate-300">
+                        <strong>[GHI CHÚ]</strong> Nội dung hướng dẫn nêu trên chỉ mang TÍNH CHẤT THAM KHẢO
+        (dựa trên dữ liệu do Quý khách cung cấp),
+        nhằm hỗ trợ Quý khách chủ động chuẩn bị trước hồ sơ.
+        Quý khách vui lòng liên hệ trực tiếp, xuất trình giấy tờ cụ thể
+        để được hướng dẫn, giải quyết theo quy định.
+        CẢM ƠN QUÝ KHÁCH ĐÃ TRẢI NGHIỆM
+        PHIÊN BẢN HƯỚNG DẪN HỒ SƠ CÔNG CHỨNG CỦA PHÒNG CÔNG CHỨNG SỐ 5 - PHIÊN BẢN 3.9.
+                    </div>
+
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={onDownload}
+                            className="flex-1 py-3 bg-green-600 text-white rounded-md font-semibold hover:bg-green-700 transition-colors shadow-lg flex items-center justify-center gap-2"
+                        >
+                            <Icons.Download /> Tải phiếu hướng dẫn (.docx)
+                        </button>
+                        <button 
+                            onClick={resetApp}
+                            className="flex-1 py-3 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+                        >
+                            Thực hiện lại
+                        </button>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+                    <div className="max-w-3xl mx-auto">
+                        <div className="text-center mb-8">
+                        <h1 className="text-3xl font-bold text-slate-900">PHÒNG CÔNG CHỨNG SỐ 5</h1>
+                        <p className="mt-2 text-slate-600">Hệ thống hướng dẫn hồ sơ ban đầu (Cá nhân) - Ver 3.9</p>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-xl overflow-hidden">
+                        {!completed && (
+                            <div className="w-full bg-slate-200 h-2">
+                            <div 
+                                className="bg-blue-600 h-2 transition-all duration-300" 
+                                style={{ width: `${((step + 1) / (3 + formData.owners.length)) * 100}%` }}
+                            ></div>
+                            </div>
+                        )}
+                        <div className="p-6 md:p-8">
+                            {completed ? (
+                                renderResults()
+                            ) : (
+                                <>
+                                {step === 0 && renderStep0()}
+                                {step === 1 && renderStep1()}
+                                {step === 2 && renderStep2()}
+                                {step > 2 && step <= 2 + formData.owners.length && renderOwnerDetailsStep(step - 3)}
+                                <div className="mt-8 flex justify-between pt-4 border-t border-slate-100">
+                                        <button
+                                            onClick={handleBack}
+                                            disabled={step === 0}
+                                            className={`flex items-center px-4 py-2 rounded text-slate-600 hover:bg-slate-100 transition-colors ${step === 0 ? 'opacity-0 cursor-default' : ''}`}
+                                        >
+                                            <Icons.ArrowLeft /> &nbsp; Quay lại
+                                        </button>
+                                        <button
+                                            onClick={handleContinue}
+                                            className="flex items-center px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm"
+                                        >
+                                            {step === 2 + formData.owners.length ? 'Xem kết quả' : 'Tiếp tục'} 
+                                            {step !== 2 + formData.owners.length && <span className="ml-2"><Icons.ArrowRight /></span>}
+                                        </button>
+                                </div>
+                                </>
+                            )}
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
